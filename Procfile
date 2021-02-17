@@ -1,1 +1,1 @@
-web: gunicorn database.wsgi --log-file -
+web: gunicorn easy_rest_api.wsgi --log-file -
