@@ -19,6 +19,9 @@ from django.contrib.auth.models import User
 from rest_framework import routers, serializers, viewsets
 from restapi.views import *
 
+from rest_framework import routers
+from restapi import views
+
 # Serializers define the API representation.
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -31,14 +34,21 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
 # Routers provide an easy way of automatically determining the URL conf.
+
+
 router = routers.DefaultRouter()
-router.register(r'users', UserViewSet)
+#router.register(r'users', UserViewSet)
+router.register(r'users', views.UserViewSet)
+router.register(r'groups', views.GroupViewSet)
+router.register(r'devices', views.DeviceViewSet)
+
+
 
 urlpatterns = [
     path('', inicio_view, name='inicio'),
     path('api/', include(router.urls)),
     path('admin/', admin.site.urls),
-    path('api-auth/', include('rest_framework.urls')),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('accounts/', include('registration.backends.default.urls')), #registration-redux
 
 ]
