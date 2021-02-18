@@ -40,7 +40,7 @@ router = routers.DefaultRouter()
 #router.register(r'users', UserViewSet)
 router.register(r'users', views.UserViewSet)
 router.register(r'groups', views.GroupViewSet)
-router.register(r'devices', views.DeviceViewSet)
+router.register(r'devices', views.DeviceViewSet, basename='devices')
 
 
 

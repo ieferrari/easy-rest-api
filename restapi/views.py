@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.contrib.auth.models import User, Group
 from rest_framework import viewsets
-from rest_framework import permissions
+from rest_framework import permissions, generics
 from .serializers import UserSerializer, GroupSerializer, DeviceSerializer
 from .models import *
 
@@ -29,4 +29,6 @@ class GroupViewSet(viewsets.ModelViewSet):
 class DeviceViewSet(viewsets.ModelViewSet):
     serializer_class = DeviceSerializer
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Device.objects.filter(user=1)
+    def get_queryset(self):
+        user = self.request.user
+        return Device.objects.filter(user=user)
