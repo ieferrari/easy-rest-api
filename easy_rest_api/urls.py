@@ -17,8 +17,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth.models import User
 from rest_framework import routers, serializers, viewsets
-from restapi.views import *
-
 from rest_framework import routers
 from restapi import views
 
@@ -45,10 +43,14 @@ router.register(r'devices', views.DeviceViewSet, basename='devices')
 
 
 urlpatterns = [
-    path('', inicio_view, name='inicio'),
+    path('', views.inicio_view, name='inicio'),
     path('api/', include(router.urls)),
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('accounts/', include('registration.backends.default.urls')), #registration-redux
+
+    path('devices/<int:device_id>/', views.get_device),
+    path('sensor/<int:device_id>/<int:sensor_id>/', views.get_sensor),
+    path('log/<int:device_id>/<int:sensor_id>/<int:value>/', views.log_sensor),
 
 ]

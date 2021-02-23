@@ -25,15 +25,15 @@ class Sensor(models.Model):
         return self.device.label+'-'+str(self.sensor_id)
 
 class state_boolean(models.Model):
-    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
+    sensor = models.OneToOneField(Sensor, on_delete=models.CASCADE)
     state  = models.BooleanField(null=True)
 
 class state_int(models.Model):
-    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
+    sensor = models.OneToOneField(Sensor, on_delete=models.CASCADE)
     state  = models.IntegerField(blank=True, null=True)
 
 class state_float(models.Model):
-    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
+    sensor = models.OneToOneField(Sensor, on_delete=models.CASCADE)
     state = models.FloatField(blank=True, null=True)
 
 class log_boolean(models.Model):
