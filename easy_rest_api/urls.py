@@ -49,8 +49,13 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('accounts/', include('registration.backends.default.urls')), #registration-redux
 
-    path('devices/<int:device_id>/', views.get_device),
-    path('sensor/<int:device_id>/<int:sensor_id>/', views.get_sensor),
-    path('log/<int:device_id>/<int:sensor_id>/<int:value>/', views.log_sensor),
+    path('my_devices', views.my_devices),
+    path('get_device_info/<int:device_id>/', views.get_device_info),
+    path('get_sensor_info/<int:device_id>/<int:sensor_id>/', views.get_sensor_info),
+
+    path('get_sensor_value/<int:device_id>/<int:sensor_id>/', views.get_sensor_value),
+    path('set_sensor_value/<int:device_id>/<int:sensor_id>/<int:value>/', views.set_sensor_value),
+
+    path('log_value/<int:device_id>/<int:sensor_id>/<int:value>/<int:timestamp>/', views.log_value),
 
 ]

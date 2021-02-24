@@ -2,11 +2,11 @@ from django.shortcuts import render
 from django.contrib.auth.models import User, Group
 from rest_framework import viewsets
 from rest_framework import permissions, generics
-from restapi.serializers import UserSerializer, GroupSerializer, DeviceSerializer, SensorSerializer, StateIntSerializer
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
 from restapi.models import Device, Sensor, state_boolean, state_int, state_float, log_boolean, log_int, log_float
+from restapi.serializers import UserSerializer, GroupSerializer, DeviceSerializer, SensorSerializer, StateIntSerializer, StateFloatSerializer
 
 def inicio_view(request):
     return render(request, 'index.html')
@@ -50,8 +50,11 @@ def Device_list(request):
             return JsonResponse(serializer.data, status=201)
         return JsonResponse(serializer.errors, status=400)
 
+def my_devices(request):
+    devices = Device.objects.filter(user=request.user)
 
-def get_device(request, device_id):
+
+def get_device_info(request, device_id):
     try:
         device = Device.objects.get(pk=device_id)
     except device.DoesNotExist:
@@ -60,8 +63,8 @@ def get_device(request, device_id):
         serializer = DeviceSerializer(device)
         return JsonResponse(serializer.data)
 
-
-def get_sensor(request, sensor_id, device_id):
+@csrf_exempt
+def get_sensor_info(request, sensor_id, device_id):
     user = request.user
     try:
         device = Device.objects.filter(user=user).get(device_id=device_id)
@@ -78,7 +81,48 @@ def get_sensor(request, sensor_id, device_id):
         return JsonResponse(serializer.data)
 
 
-def log_sensor(request, device_id, sensor_id, value):
+def get_sensor_value(request, sensor_id, device_id):
+    try:
+        device = Device.objects.filter(user=request.user).get(device_id=device_id)
+    except Device.DoesNotExist:
+        print('device not found')
+        return HttpResponse(status=404)
+    try:
+        sensor = Sensor.objects.filter(device=device).get(sensor_id=sensor_id)
+    except Sensor.DoesNotExist:
+        print('sensor not found')
+        return HttpResponse(status=404)
+    if request.method == 'GET':
+        state=state_int.objects.get(sensor=sensor)
+        serializer = StateIntSerializer(state)
+        return JsonResponse(serializer.data)
+
+
+def set_sensor_value(request, device_id, sensor_id, value):
+    user = request.user
+    try:
+        device = Device.objects.filter(user=user).get(device_id=device_id)
+    except Device.DoesNotExist:
+        print('device not found')
+        return HttpResponse(status=404)
+    try:
+        sensor = Sensor.objects.filter(device=device).get(sensor_id=sensor_id)
+    except Sensor.DoesNotExist:
+        print('sensor not found')
+        return HttpResponse(status=404)
+
+    if request.method == 'GET':
+        try:
+            state=state_int.objects.get(sensor=sensor)
+            state.state=value
+            state.save()
+        except state_int.DoesNotExist:
+            state=state_int(sensor=sensor, state=value)
+            state.save()
+        serializer = StateIntSerializer(state)
+        return JsonResponse(serializer.data)
+
+def change_float(request, device_id, sensor_id, value):
     user = request.user
     try:
         device = Device.objects.filter(user=user).get(device_id=device_id)
@@ -92,11 +136,34 @@ def log_sensor(request, device_id, sensor_id, value):
         return HttpResponse(status=404)
 
     if request.method == 'GET':
-        state=state_int(sensor=sensor, state=value)
+        state=state_float(sensor=sensor, state=value)
         state.save()
         print("guardado")
-        serializer = StateIntSerializer(state)
+        serializer = StateFloatSerializer(state)
         return JsonResponse(serializer.data)
+
+
+def log_value(request, device_id, sensor_id, value, timestamp):
+    user = request.user
+    try:
+        device = Device.objects.filter(user=user).get(device_id=device_id)
+    except Device.DoesNotExist:
+        print('device not found')
+        return HttpResponse(status=404)
+    try:
+        sensor = Sensor.objects.filter(device=device).get(sensor_id=1)
+    except Sensor.DoesNotExist:
+        print('sensor not found')
+        return HttpResponse(status=404)
+
+    if request.method == 'GET':
+        state=log_int(sensor=sensor, state=value, timestamp=timestamp)
+        state.save()
+        print("guardado")
+        #serializer = StateIntSerializer(state)
+        return None #JsonResponse(serializer.data)
+
+
 
 
 class SensorViewSet(viewsets.ModelViewSet):

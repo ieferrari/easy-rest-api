@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User, Group
 from rest_framework import serializers
-from .models import Device, Sensor, state_int
+from .models import Device, Sensor, state_int, state_float
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
@@ -48,6 +48,11 @@ class SensorSerializer(serializers.Serializer):
 class StateIntSerializer(serializers.ModelSerializer):
     class Meta:
         model = state_int
+        fields = [ 'state']
+
+class StateFloatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = state_float
         fields = [ 'state']
 
 REST_FRAMEWORK = {

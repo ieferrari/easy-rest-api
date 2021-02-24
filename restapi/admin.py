@@ -6,3 +6,4 @@ from .models import *
 admin.site.register(Device)
 admin.site.register(Sensor)
 admin.site.register(log_int)
+admin.site.register(state_int)
