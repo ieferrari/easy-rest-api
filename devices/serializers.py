@@ -6,26 +6,50 @@ from .models import *
 class DeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
-        fields = '__all__'
+        fields ='__all__'
+        extra_kwargs = {'pk': {'write_only': True}}   #this prevents pk to be shown back in the response
+
+
+class DeviceSerializer_public(serializers.ModelSerializer):
+    class Meta:
+        model = Device
+        fields =('device_id','label','description','last_connection', 'number_of_sensors')
+
 
 class SensorBooleanSerializer(serializers.ModelSerializer):
     class Meta:
         model = SensorBoolean
         fields = '__all__'# ('pk','label','value',)
+        extra_kwargs = {'pk': {'write_only': True}}
+
+class SensorBooleanSerializerValue(serializers.ModelSerializer):
+    class Meta:
+        model = SensorBoolean
+        fields = ('value',)
+
 
 class SensorIntSerializer(serializers.ModelSerializer):
     class Meta:
         model = SensorInt
         fields = '__all__'# ('pk','label','value',)
+        extra_kwargs = {'pk': {'write_only': True}}
+
+class SensorIntSerializerValue(serializers.ModelSerializer):
+    class Meta:
+        model = SensorInt
+        fields = ('value',)
+
 
 class SensorFloatSerializer(serializers.ModelSerializer):
     class Meta:
         model = SensorFloat
         fields =  '__all__'# ('pk','label','value',)
+        extra_kwargs = {'pk': {'write_only': True}}
 
-
-
-
+class SensorFloatSerializerValue(serializers.ModelSerializer):
+    class Meta:
+        model = SensorFloat
+        fields =  ('value',)
 
 
 class UserSerializer(serializers.ModelSerializer):

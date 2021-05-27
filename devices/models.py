@@ -3,19 +3,35 @@ from django.contrib.auth.models import User
 import datetime
 from django.core.validators import MinValueValidator, MaxValueValidator
 
+class DevicesPerUser(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    number_of_devices =models.IntegerField(blank=False, null=False, default=0)
+
 class Device(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    #device_id = models.IntegerField(blank=False, null=False)
+    device_id = models.IntegerField(blank=False, null=False,default=0)
     label = models.CharField(blank=False, max_length=50)
     description = models.CharField(blank=True, max_length=200)
     last_connection = models.DateField( auto_now=True)
+    number_of_sensors=models.IntegerField(blank=False, default=0, null=False)
     def __str__(self):
         return str(self.pk)
 
-tipos_de_sensor=((1,'si/no'),(2,'entero'),(3,'punto flotante'),(4,'si/no linea de tiempo'),(5,'entero linea de tiempo'),(6,'punto flotante  linea de tiempo'),)
+
+tipo_sensor=((1,"SensorBoolean"),(2,"SensorInt"),(3,"SensorFloat"))
+
+class SensorIndex(models.Model):
+    ''' relates a device with every child sensor of differents kinds'''
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    sensor_id = models.IntegerField(blank=False, null=False, default=-1)
+    tipo =models.IntegerField(blank=False, null=False,choices=tipo_sensor)
+    sensor_pk = models.IntegerField(blank=False, null=False)
+
+
 
 class SensorBoolean(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    sensor_id = models.IntegerField(blank=False, null=False , default=0)
     label = models.CharField(blank=False, max_length=50)
     description = models.CharField(blank=True, max_length=200)
     value  = models.BooleanField(null=True)
@@ -24,6 +40,7 @@ class SensorBoolean(models.Model):
 
 class SensorInt(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    sensor_id = models.IntegerField(blank=False, null=False, default=0)
     label = models.CharField(blank=False, max_length=50)
     description = models.CharField(blank=True, max_length=200)
     value  = models.IntegerField(blank=True, null=True)
@@ -32,6 +49,7 @@ class SensorInt(models.Model):
 
 class SensorFloat(models.Model):
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    sensor_id = models.IntegerField(blank=False, null=False, default=0)
     label = models.CharField(blank=False, max_length=50)
     description = models.CharField(blank=True, max_length=200)
     value  = models.FloatField(blank=True, null=True)
@@ -40,6 +58,7 @@ class SensorFloat(models.Model):
 
 class SensorLogger(models.Model):   #float only
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    sensor_id = models.IntegerField(blank=False, null=False, default=0)
     label = models.CharField(blank=False, max_length=50)
     description = models.CharField(blank=True, max_length=200)
     def __str__(self):

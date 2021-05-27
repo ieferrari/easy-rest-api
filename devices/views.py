@@ -12,15 +12,40 @@ from django.shortcuts import render
 
 class MyDevices(APIView):
     def get(self, request):
-        a=User.objects.get(pk=1) #replace with actual user !!! TO_DO
-        devices= Device.objects.filter(user=a)
-        data = DeviceSerializer(devices, many=True).data
+        devices= Device.objects.filter(user=request.user)
+        data = DeviceSerializer_public(devices, many=True).data
         return Response(data)
+
+
+class AddDevice(APIView):
+    def post(self, request):
+        user=request.user.pk
+        devices_per_user = DevicesPerUser.objects.get(user=user)
+        device_id =devices_per_user.number_of_devices +1
+        label = request.data.get("label")
+        description = request.data.get("description")
+        if label==None:
+            return Response({"error": "must specify a label"}, status=status.HTTP_400_BAD_REQUEST)
+        data={"user":user,"label":label, "device_id":device_id}
+        if description !=None:
+            data.update({"description":description,})
+        serializer = DeviceSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            devices_per_user.number_of_devices +=1
+            devices_per_user.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"error": "incorrect data"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DeviceInfo(APIView):
     def get(self, request, device_id):
-        device = Device.objects.get(pk=device_id)
+        user = request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
         sensors_boolean =SensorBoolean.objects.filter(device=device)
         sensors_boolean_data = SensorBooleanSerializer(sensors_boolean, many=True).data
@@ -30,170 +55,278 @@ class DeviceInfo(APIView):
 
         sensors_float = SensorFloat.objects.filter(device=device)
         sensors_float_data = SensorIntSerializer(sensors_float, many=True).data
-
-        return Response({'boolean_sensors':sensors_boolean_data,
-                         'int_sensors:':sensors_int_data,
-                         'float_sensors:':sensors_float_data})
-
-
-class DeviceSensors(APIView):
-    def get(self, request, device_id):
-        a=User.objects.get(pk=1) #replace with actual user !!! TO_DO
-        sensors = SensorBoolean.objects.filter(device=device_id)
-        data = SensorBooleanSerializer(sensors, many=True).data
+        data= DeviceSerializer_public(device).data
+        if(sensors_boolean_data!=[]):
+            data.update({'boolean_sensors':sensors_boolean_data,})
+        if(sensors_int_data!=[]):
+            data.update({'int_sensors:':sensors_int_data,})
+        if(sensors_float_data!=[]):
+            data.update({'float_sensors:':sensors_float_data})
         return Response(data)
 
 
-class GetBooleanValue(APIView):
-    def get(self, request, device_id, sensor_id):
-        sensor = SensorBoolean.objects.get(pk=sensor_id)
-        data = SensorBooleanSerializer(sensor).data
-        return Response(data)
+def borrarRegistro(tipo, sensor_pk):
+    if tipo==1:
+        SensorBoolean.objects.get(pk=sensor_pk).delete()
+    elif tipo==2:
+        SensorInt.objects.get(pk=sensor_pk).delete()
+    elif tipo==3:
+        SensorFloat.objects.get(pk=sensor_pk).delete()
 
-class GetIntValue(APIView):
-    def get(self, request, device_id, sensor_id):
-        sensor = SensorInt.objects.get(pk=sensor_id)
-        data = SensorIntSerializer(sensor).data
-        return Response(data)
+from itertools import count
+def firstMissingSince(sequence, start=1):
+    uniques = set(sequence) # { x for x in sequence if x>=start }
+    return next( x for x in count(start) if x not in uniques )
 
-class GetFloatValue(APIView):
-    def get(self, request, device_id, sensor_id):
-        sensor = SensorFloat.objects.get(pk=sensor_id)
-        data = SensorFloatSerializer(sensor).data
-        return Response(data)
-
-
-class SetBooleanValue(APIView):
-    def post(self, request, device_id, sensor_id):
-        sensor = SensorBoolean.objects.get(pk=sensor_id)
-        value = request.data.get("value")   #part of the post parameters
-        sensor_serializer = SensorBooleanSerializer(instance=sensor, data={
-                                'value':value,
-                                'label':sensor.label,
-                                'device':sensor.device.pk})
-        if sensor_serializer.is_valid():
-            sensor_serializer.save()
-            return Response(sensor_serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(sensor_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class SetIntValue(APIView):
-    def post(self, request, sensor_id):
-        sensor = Sensor.objects.filter(pk=sensor_id)
-        value = request.data.get("value")     #part of the post parameters
-        serializer = SensorIntSerializer(intance= sensor, data={
-                                'value':value,
-                                'label':sensor.label,
-                                'device':sensor.device.pk})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
-
-
-class SetFloatValue(APIView):
-    def post(self, request, sensor_id):
-        sensor = Sensor.objects.filter(pk=sensor_id)
-        value = request.data.get("value")     #part of the post parameters
-        serializer = SensorFloatSerializer(intance= sensor, data={
-                                'value':value,
-                                'label':sensor.label,
-                                'device':sensor.device.pk})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
-
-
-class AddDevice(APIView):
-    def post(self, request):
-        user=request.user.pk
-        label = request.data.get("label")
-        description = request.data.get("description")
-        if label==None:
-            return Response({"error": "must specify a label"}, status=status.HTTP_400_BAD_REQUEST)
-        data={"user":user,"label":label}
-        if description !=None:
-            data.uptade({"description":description,})
-        serializer = DeviceSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response({"error": "incorrect data"}, status=status.HTTP_400_BAD_REQUEST)
+def nextAviableId(device):
+    a=SensorIndex.objects.filter(device=device).values_list('sensor_id')
+    l=[None]*len(a)
+    cont=0
+    for i in a:
+        l[cont]=i[0]
+        cont+=1
+    return firstMissingSince(l)
 
 
 class AddSensorBoolean(APIView):
-    def post(self, request, device_id):
-        user=request.user.pk
-        device=Devices.objects.get(pk=device_id)
-        if device.user.pk != user:
-            return Response({"error": "user does not own this device"}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, device_id, sensor_id=None):
+        user = request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
         label = request.data.get("label")
         if label==None:
             return Response({"error": "must specify a label"}, status=status.HTTP_400_BAD_REQUEST)
-        data={"user":user, "label":label}
+
+        sensor_id_argument= True
+        if sensor_id ==None:
+            sensor_id = nextAviableId(device)
+            sensor_id_argument= False
+
+        data={"device":device.pk, "label":label, "sensor_id":sensor_id,}
         value = request.data.get("value")
         if value != None:
             data.update({"value":value})
         description = request.data.get("description")
         if description !=None:
-            data.uptade({"description":description,})
-        serializer=SensorBooleanSerializer(data)
+            data.update({"description":description,})
+        serializer=SensorBooleanSerializer(data=data)
+
         if serializer.is_valid():
             serializer.save()
+            device.number_of_sensors+=1
+            device.save()
+            if sensor_id_argument:    #si le pase a sensor_id entre los argumentos
+                try:                                              #si ya existia la posición a escribir
+                    index= SensorIndex.objects.filter(device=device).get(sensor_id=sensor_id)
+                    borrarRegistro(index.tipo, index.sensor_pk)  #borro el registro virjo
+                    index.sensor_pk=serializer.data['id']         #actualizo la info en el index con el nuevo SensorBoolean
+                    index.tipo=1
+                    index.save()
+                    device.number_of_sensors-=1   #quito el senor q había sumado a la cuenta
+                    device.save()
+                except SensorIndex.DoesNotExist:  #si no existia la posición a escribir
+                    index=SensorIndex.objects.create(device=device,sensor_id=sensor_id, tipo=1, sensor_pk=serializer.data['id'])
+                    index.save()
+            else:
+                index=SensorIndex.objects.create(device=device,sensor_id=sensor_id, tipo=1, sensor_pk=serializer.data['id'])
+                index.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
+            print(serializer.errors)
             return Response({"error": "incorrect data"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AddSensorInt(APIView):
-    def post(self, request, device_id):
-        user=request.user.pk
-        device=Devices.objects.get(pk=device_id)
-        if device.user.pk != user:
-            return Response({"error": "user does not own this device"}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, device_id, sensor_id=None):
+        user = request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
         label = request.data.get("label")
         if label==None:
             return Response({"error": "must specify a label"}, status=status.HTTP_400_BAD_REQUEST)
-        data={"user":user, "label":label}
+
+        sensor_id_argument= True
+        if sensor_id ==None:
+            sensor_id = nextAviableId(device)
+            sensor_id_argument= False
+
+        data={"device":device.pk, "label":label, "sensor_id":sensor_id,}
         value = request.data.get("value")
         if value != None:
             data.update({"value":value})
         description = request.data.get("description")
         if description !=None:
-            data.uptade({"description":description,})
-        serializer=SensorIntSerializer(data)
+            data.update({"description":description,})
+        serializer=SensorIntSerializer(data=data)
+
         if serializer.is_valid():
             serializer.save()
+            device.number_of_sensors+=1
+            device.save()
+            if sensor_id_argument:    #si le pase a sensor_id entre los argumentos
+                try:                                              #si ya existia la posición a escribir
+                    index= SensorIndex.objects.filter(device=device).get(sensor_id=sensor_id)
+                    borrarRegistro(index.tipo, index.sensor_pk)  #borro el registro virjo
+                    index.sensor_pk=serializer.data['id']         #actualizo la info en el index con el nuevo SensorBoolean
+                    index.tipo=2
+                    index.save()
+                    device.number_of_sensors-=1   #quito el senor q había sumado a la cuenta
+                    device.save()
+                except SensorIndex.DoesNotExist:  #si no existia la posición a escribir
+                    index=SensorIndex.objects.create(device=device,sensor_id=sensor_id, tipo=2, sensor_pk=serializer.data['id'])
+                    index.save()
+            else:
+                index=SensorIndex.objects.create(device=device,sensor_id=sensor_id, tipo=2, sensor_pk=serializer.data['id'])
+                index.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
+            print(serializer.errors)
             return Response({"error": "incorrect data"}, status=status.HTTP_400_BAD_REQUEST)
 
+
 class AddSensorFloat(APIView):
-    def post(self, request, device_id):
-        user=request.user.pk
-        device=Devices.objects.get(pk=device_id)
-        if device.user.pk != user:
-            return Response({"error": "user does not own this device"}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, device_id, sensor_id=None):
+        user = request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
         label = request.data.get("label")
         if label==None:
             return Response({"error": "must specify a label"}, status=status.HTTP_400_BAD_REQUEST)
-        data={"user":user, "label":label}
+
+        sensor_id_argument= True
+        if sensor_id ==None:
+            sensor_id = nextAviableId(device)
+            sensor_id_argument= False
+
+        data={"device":device.pk, "label":label, "sensor_id":sensor_id,}
         value = request.data.get("value")
         if value != None:
             data.update({"value":value})
         description = request.data.get("description")
         if description !=None:
-            data.uptade({"description":description,})
-        serializer=SensorFloatSerializer(data)
+            data.update({"description":description,})
+        serializer=SensorFloatSerializer(data=data)
+
+        if serializer.is_valid():
+            serializer.save()
+            device.number_of_sensors+=1
+            device.save()
+            if sensor_id_argument:    #si le pase a sensor_id entre los argumentos
+                try:                                              #si ya existia la posición a escribir
+                    index= SensorIndex.objects.filter(device=device).get(sensor_id=sensor_id)
+                    borrarRegistro(index.tipo, index.sensor_pk)  #borro el registro virjo
+                    index.sensor_pk=serializer.data['id']         #actualizo la info en el index con el nuevo SensorBoolean
+                    index.tipo=3
+                    index.save()
+                    device.number_of_sensors-=1   #quito el senor q había sumado a la cuenta
+                    device.save()
+                except SensorIndex.DoesNotExist:  #si no existia la posición a escribir
+                    index=SensorIndex.objects.create(device=device,sensor_id=sensor_id, tipo=3, sensor_pk=serializer.data['id'])
+                    index.save()
+            else:
+                index=SensorIndex.objects.create(device=device,sensor_id=sensor_id, tipo=3, sensor_pk=serializer.data['id'])
+                index.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            print(serializer.errors)
+            return Response({"error": "incorrect data"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class GetSensor(APIView):
+    def get(self, request, device_id, sensor_id):
+        user=request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            sensor_index = SensorIndex.objects.filter(device=device).get(sensor_id=sensor_id)
+            tipo = sensor_index.tipo
+            sensor_pk= sensor_index.sensor_pk
+        except SensorIndex.DoesNotExist:
+            return Response({"error": "The requested sensor does not exist in this device"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if (tipo==1):
+            print(sensor_pk,sensor_id)
+            sensor = SensorBoolean.objects.get(pk=sensor_pk)
+            return Response(SensorBooleanSerializer(sensor).data)
+        elif tipo ==2 :
+            sensor = SensorInt.objects.get(pk=sensor_pk)
+            return Response(SensorIntSerializer(sensor).data)
+        elif tipo ==3:
+            sensor = SensorFloat.objects.get(pk=sensor_pk)
+            return Response(SensorFloatSerializer(sensor).data)
+        else:
+            return  Response({"error": "tipo de sensor desconcido"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetSensorValue(APIView):
+    def get(self, request, device_id, sensor_id):
+        user=request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            sensor_index = SensorIndex.objects.filter(device=device).get(sensor_id=sensor_id)
+            tipo = sensor_index.tipo
+            sensor_pk= sensor_index.sensor_pk
+        except SensorIndex.DoesNotExist:
+            return Response({"error": "The requested sensor does not exist in this device"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if (tipo==1):
+            sensor = SensorBoolean.objects.get(pk=sensor_pk)
+            return Response(SensorBooleanSerializerValue(sensor).data)
+        elif tipo ==2 :
+            sensor = SensorInt.objects.get(pk=sensor_pk)
+            return Response(SensorIntSerializerValue(sensor).data)
+        elif tipo ==3:
+            sensor = SensorFloat.objects.get(pk=sensor_pk)
+            return Response(SensorFloatSerializerValue(sensor).data)
+        else:
+            return  Response({"error": "tipo de sensor desconcido"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SetSensorValue(APIView):
+    def post(self, request, device_id, sensor_id):
+        user=request.user
+        try:
+            device = Device.objects.filter(user=user).get(device_id=device_id)
+        except Device.DoesNotExist:
+            return Response({"error": "The requested device does not exist"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            sensor_index = SensorIndex.objects.filter(device=device).get(sensor_id=sensor_id)
+            tipo = sensor_index.tipo
+            sensor_pk= sensor_index.sensor_pk
+        except SensorIndex.DoesNotExist:
+            return Response({"error": "The requested sensor does not exist in this device"}, status=status.HTTP_400_BAD_REQUEST)
+
+        value = request.data.get("value")
+        if (tipo==1):
+            sensor = SensorBoolean.objects.get(pk=sensor_pk)
+            serializer = SensorBooleanSerializerValue(instance=sensor, data={'value':value})
+        elif tipo ==2 :
+            sensor = SensorInt.objects.get(pk=sensor_pk)
+            serializer = SensorIntSerializerValue(instance=sensor, data={'value':value})
+        elif tipo ==3:
+            sensor = SensorFloat.objects.get(pk=sensor_pk)
+            serializer = SensorFloatSerializerValue(instance=sensor, data={'value':value})
+        else:
+            return  Response({"error": "tipo de sensor desconcido"}, status=status.HTTP_400_BAD_REQUEST)
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return Response({"error": "incorrect data"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserCreate(generics.CreateAPIView):
     authentication_classes = ()
